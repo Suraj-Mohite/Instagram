@@ -1,0 +1,38 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+env/
+.venv/
+.env/
+
+# IDE files
+*.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Local settings
+local_settings.py
+
+# Database
+db.sqlite3
+
+# Compiled Python files
+*.pyc
+
+# Dependency management
+pip-lock.txt
+requirements.txt
+
+# Django specific
+*.pyc
+*.pyo
+*.db
+*.sqlite3
+*.log
