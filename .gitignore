@@ -28,7 +28,7 @@ db.sqlite3
 
 # Dependency management
 pip-lock.txt
-requirements.txt
+# requirements.txt
 
 # Django specific
 *.pyc
@@ -36,3 +36,5 @@ requirements.txt
 *.db
 *.sqlite3
 *.log
+
+media/

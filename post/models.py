@@ -3,12 +3,10 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save, post_delete
 from django.utils.text import slugify
 from django.urls import reverse
+from .utils import *
 import uuid
 
 # Create your models here.
-
-def user_directory_path(instance, filename):
-    return f"user_{instance.user.id}/{filename}"
 
 class BaseModel(models.Model):
     id=models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -18,6 +16,7 @@ class BaseModel(models.Model):
 
     class Meta:
         abstract = True
+
 
 class Tag(models.Model):
     title = models.CharField(max_length=150)
@@ -40,18 +39,30 @@ class Tag(models.Model):
 
 
 class Post(BaseModel):
-    picture = models.ImageField(upload_to=user_directory_path, null=True, verbose_name="Picture")
-    caption = models.TextField()
-    tag = models.ManyToManyField(Tag, related_name="tags", null=True, blank=True)
+    caption = models.TextField(null=True, blank=True)
+    tags = models.ManyToManyField(Tag, related_name="tags", blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="posts")
     like = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['-created_at']
 
     def get_absolute_url(self):
         return reverse("post-details", args=[str(self.id)])
     
     def __str__(self):
-        return self.caption
+        return f"{self.user.username}'s Post on Date: {self.created_at.date()}"
     
+
+class PostImage(models.Model):
+    image = models.ImageField(upload_to=get_user_directory_path, null=True, verbose_name="Picture")
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='post_images')
+
+    class Meta:
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.post.user.username}'s post - {self.post.id}"
 
 class Follow(BaseModel):
     follower = models.ForeignKey(User, on_delete=models.CASCADE, related_name="follower") #follower
@@ -59,6 +70,7 @@ class Follow(BaseModel):
 
     def __str__(self):
         return f"{self.follower.username} - {self.following.username}"
+
 
 class Stream(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, related_name="stream_post")
@@ -75,6 +87,12 @@ class Stream(models.Model):
         for follower in followers:
             stream = Stream(post=post, user=follower.follower, date=post.created_at, following=user)
             stream.save()
+
+    def __str__(self):
+        return f"{self.post.user.username} - {self.user.username}"
+     
+    class Meta:
+        ordering = ['-date']
 
 
 post_save.connect(Stream.add_post, sender=Post)

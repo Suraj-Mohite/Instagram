@@ -90,7 +90,7 @@ class Migration(migrations.Migration):
                     "picture",
                     models.ImageField(
                         null=True,
-                        upload_to=post.models.user_directory_path,
+                        upload_to=post.models.get_user_directory_path,
                         verbose_name="Picture",
                     ),
                 ),
