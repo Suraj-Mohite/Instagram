@@ -1,18 +1,17 @@
-from django.shortcuts import render
-from django.http import JsonResponse
-from django.middleware.csrf import get_token
-from .constants import GET_MESSAGE
 from django.contrib.auth.models import User
-from django.core.serializers.json import DjangoJSONEncoder
+from django.http import Http404
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework import serializers
 
-from .models import Post, Tag, Follow, Stream
+
+from userAuth.models import Profile
 from .utils import get_tag_list_from_caption
-from .serializers import PostSerializer, FollowSerializer, TagSerializer, StreamSerializer
-
+from .models import Post, Tag, Follow, Stream, Likes, SavedPost
+from .serializers import PostSerializer, FollowSerializer, TagSerializer, StreamSerializer, LikesSerializer, SavedPostSerializer
+from userAuth.serializers import ProfileSerializer
 
 import logging
 import sys
@@ -51,16 +50,27 @@ class CreatePostAPIView(APIView):
         response['message'] = 'Internal server error'
 
         try:
-            print(request.data)
             serializer = PostSerializer(data = request.data, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
                 response['status'] = 200
                 response['message'] = 'Success'
                 response['data'] = serializer.data
+                return Response(response, status=status.HTTP_201_CREATED)
             else:
-                response['message'] = serializer.errors
-            return Response(response, status=status.HTTP_201_CREATED)
+                response['status'] = 400
+                response['message'] = 'Bad Request'
+                response['error'] = serializer.errors
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+            
+        except serializers.ValidationError as e:
+                response['status'] = 400
+                response['message'] = 'Bad Request'
+                response['error'] = e.detail
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                logger.error("CreatePostAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
+                return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
         except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 logger.error("CreatePostAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
@@ -68,71 +78,253 @@ class CreatePostAPIView(APIView):
 
 CreatePostAPI = CreatePostAPIView.as_view()
 
-# def index(request):
+
+class PostDetailAPIView(APIView):
+     
+    def get_object(self, id):
+        try:
+            return Post.objects.get(id=id)
+        except Post.DoesNotExist as e:
+            raise Http404(e)
+     
+    def get(self, request, id, format=None):
+        response = {}
+        response['status'] = 500
+        response['message'] = 'Internal server error'
+
+        try:
+            post = self.get_object(id)
+            serializer = PostSerializer(post)
+            response['status'] = 200
+            response['message'] = 'Success'
+            response['data'] = serializer.data
+            return Response(response, status=status.HTTP_200_OK)
+        except Http404 as e: 
+            response['status'] = 404
+            response['message'] = 'Failed'
+            response['error'] = str(e)
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            logger.error("PostDetailAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-#     if request.method == 'GET':
-#         try:
-#             response = {}
-#             response['status'] = 500
-#             response['message'] = 'Internal server error'
-#             response['csrf'] = get_token(request)
 
-#             user = request.user
-#             user = User.objects.get(username='admin')
-#             logger.info("##########"+ str(user), extra={'AppName': 'post'})
-#             streams = Stream.objects.filter(user=user)
-#             streamed_post_id_list = []
-#             for stream_post in streams:
-#                 streamed_post_id_list.append(str(stream_post.post.id))
+    def put(self, request, id, format=None):
+        response = {}
+        response['status'] = 500
+        response['message'] = 'Internal server error'
 
-#             logger.info("##########"+ str(streamed_post_id_list), extra={'AppName': 'post'})
+        try:
+            post = self.get_object(id)
+            serializer = PostSerializer(post, data=request.data, context={'request': request})
 
-#             posts = Post.objects.filter(id__in=streamed_post_id_list).order_by("-created_at")
-
-#             fields_to_include = ['id', 'created_at', 'updated_at', 'picture', 'likes']
-
-#             data = {
-#                 'data' : list(posts.values(*fields_to_include))
-#             }
-
-#             response['data'] = data
-#             return JsonResponse(response, status=200, encoder=DjangoJSONEncoder)
-
-#         except Exception as e:
-#                 exc_type, exc_obj, exc_tb = sys.exc_info()
-#                 logger.error("index %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
-#                 return JsonResponse(response, status=500)
-
-# def create_post(request):
-#     if request.method == 'GET':
-#         try:
-#             response = {}
-#             response['status'] = 500
-#             response['message'] = GET_MESSAGE
-#             response['csrf'] = get_token(request)
-
-#             return JsonResponse(response, status=200)
-
-#         except Exception as e:
-#                 exc_type, exc_obj, exc_tb = sys.exc_info()
-#                 logger.error("create_post %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
-#                 return JsonResponse(response, status=500)
+            if serializer.is_valid():
+                serializer.save()
+                response['status'] = 200
+                response['message'] = 'Success'
+                response['data'] = serializer.data
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                response['status'] = 400
+                response['message'] = 'Bad Request'
+                response['error'] = serializer.errors
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Http404 as e: 
+            response['status'] = 404
+            response['message'] = 'Failed'
+            response['error'] = str(e)
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
         
-#     if request.method == 'POST':
-#         try:
-#             response = {}
-#             response['status'] = 500
-#             response['message'] = "internal server error"
-            
-#             user = request.user
-#             user = User.objects.get(username='admin')
-#             logger.info("##########"+ str(user), extra={'AppName': 'post'})
+        except serializers.ValidationError as e:
+            response['status'] = 400
+            response['message'] = 'Bad Request'
+            response['error'] = e.detail
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            logger.error("PostDetailAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            logger.error("PostDetailAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def delete(self, request, id, format=None):
+        response = {}
+        response['status'] = 500
+        response['message'] = 'Internal server error'
 
-            
+        try:
+            post = self.get_object(id)
+            post.delete()
+            response['status'] = 200
+            response['message'] = 'Success'
+            return Response(response, status=status.HTTP_200_OK)
+        except Http404 as e: 
+            response['status'] = 404
+            response['message'] = 'Failed'
+            response['error'] = str(e)
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            logger.error("PostDetailAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+PostDetailAPI = PostDetailAPIView.as_view()
 
-#             return JsonResponse(response, status=200)
 
-#         except Exception as e:
-#                 exc_type, exc_obj, exc_tb = sys.exc_info()
-#                 logger.error("create_post %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
-#                 return JsonResponse(response, status=500)
+class LikeAPIView(APIView):
+    
+    def get_object(self, id):
+        try:
+            return Post.objects.get(id=id)
+        except Post.DoesNotExist as e:
+            raise Http404(e)
+        
+    def post(self, request, id, format=None):
+        response = {}
+        response['status'] = 500
+        response['message'] = 'Internal server error'
+
+        try:
+            user = request.user
+            if user.is_authenticated:
+                post = self.get_object(id)
+                
+                current_likes = post.like
+
+                likes = Likes.objects.filter(user=user, post=post)
+                if not likes:
+                    serializer = LikesSerializer(data={'user': user.id, 'post': id}, context={'request': request})
+                    if serializer.is_valid():
+                        serializer.save()
+                        Likes.objects.create(user=user, post=post)
+                        current_likes+=1
+                    else:
+                        response['status'] = 400
+                        response['message'] = 'Bad Request'
+                        response['error'] = serializer.errors
+                        return Response(response, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    Likes.objects.filter(user=user, post=post).delete()
+                    current_likes-=1
+                
+                post.like = current_likes
+                post.save()
+                # serializer = PostSerializer(post)
+                response['status'] = 200
+                response['message'] = 'Success'
+                # response['data'] = serializer.data
+                return Response(response, status=status.HTTP_200_OK)
+            return Response({'message': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        except Http404 as e: 
+            response['status'] = 404
+            response['message'] = 'Failed'
+            response['error'] = str(e)
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            logger.error("LikeAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+LikeAPI = LikeAPIView.as_view()
+
+class SavePostAPIView(APIView):
+
+    def get_object(self, id):
+            try:
+                return Post.objects.get(id=id)
+            except Post.DoesNotExist as e:
+                raise Http404(e)
+        
+    def post(self, request, id, format=None):
+        response = {}
+        response['status'] = 500
+        response['message'] = 'Internal server error'
+
+        try:
+            user = request.user
+            print(user)
+            if user.is_authenticated:
+                post = self.get_object(id)
+                profile = Profile.objects.get(user=user)
+                if profile.favourite.filter(id=id).exists():
+                    profile.favourite.remove(post)
+                else:
+                    profile.favourite.add(post)
+
+                profile.save()
+                serializer = ProfileSerializer(profile)
+                response['status'] = 200
+                response['message'] = 'Success'
+                response['data'] = serializer.data
+                return Response(response, status=status.HTTP_200_OK)
+            return Response({'message': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        except Http404 as e: 
+            response['status'] = 404
+            response['message'] = 'Failed'
+            response['error'] = str(e)
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            logger.error("SavePostAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+SavePostAPI = SavePostAPIView.as_view()
+
+
+class SavePostNewAPIView(APIView):
+
+    def get_object(self, id):
+            try:
+                return Post.objects.get(id=id)
+            except Post.DoesNotExist as e:
+                raise Http404(e)
+        
+    def post(self, request, id, format=None):
+        response = {}
+        response['status'] = 500
+        response['message'] = 'Internal server error'
+
+        try:
+            user = request.user
+            print(user)
+            if user.is_authenticated:
+                post = self.get_object(id)
+                profile = Profile.objects.get(user=user)
+
+                try:
+                    saved_post_obj = SavedPost.objects.get(profile=profile, post=post)
+                    saved_post_obj.delete()
+                    response['status'] = 200
+                    response['message'] = 'Success'
+                except SavedPost.DoesNotExist as e:
+                    serializer = SavedPostSerializer(data={'profile': profile.id, 'post':id})
+                    if serializer.is_valid():
+                        serializer.save()
+
+                        response['status'] = 200
+                        response['message'] = 'Success'
+                        response['data'] = serializer.data
+                    else:
+                        response['status'] = 400
+                        response['message'] = 'Bad Request'
+                        response['error'] = serializer.errors
+                        return Response(response, status=status.HTTP_400_BAD_REQUEST)
+
+                return Response(response, status=status.HTTP_200_OK)
+            return Response({'message': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        except Http404 as e: 
+            response['status'] = 404
+            response['message'] = 'Failed'
+            response['error'] = str(e)
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            logger.error("SavePostNewAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
+            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+SavePostNewAPI = SavePostNewAPIView.as_view()

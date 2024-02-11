@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     
     #custom apps
     'post',
+    'base',
     'userAuth',
 ]
 
@@ -104,8 +105,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATIC_URL = "static/"
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 if DEBUG:
@@ -118,11 +117,13 @@ else:
     "http://127.0.0.1:9000",
 ]
     
+STATIC_URL = "/static/"
+
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-STATIC_DIRS = [
-    os.path.join(BASE_DIR, 'static')
-]
+# STATICFILES_DIRS = [
+#     os.path.join(BASE_DIR, 'static')
+# ]
 
 MEDIA_URL = '/media/'
 
@@ -192,6 +193,10 @@ LOGFILE_COUNT = 5
 
 POST_LOGFILE = 'post'
 
+BASE_LOGFILE = 'base'
+
+USER_AUTH_LOGFILE = 'userAuth'
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -221,6 +226,16 @@ LOGGING = {
     },
     'loggers': {
         POST_LOGFILE: {
+            'handlers': ['applog', 'errorlog'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        BASE_LOGFILE: {
+            'handlers': ['applog', 'errorlog'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        USER_AUTH_LOGFILE: {
             'handlers': ['applog', 'errorlog'],
             'level': 'INFO',
             'propagate': True,

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Post, Tag, Follow, Stream, PostImage
+from .models import Post, Tag, Follow, Stream, PostImage, Likes, SavedPost
 
 # Register your models here.
 
@@ -15,3 +15,5 @@ admin.site.register(PostImage)
 admin.site.register(Tag)
 admin.site.register(Follow)
 admin.site.register(Stream)
+admin.site.register(Likes)
+admin.site.register(SavedPost)

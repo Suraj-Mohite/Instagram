@@ -3,20 +3,13 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save, post_delete
 from django.utils.text import slugify
 from django.urls import reverse
+
+from base.models import BaseModel
+from base.utils import get_user_directory_path
 from .utils import *
 import uuid
 
 # Create your models here.
-
-class BaseModel(models.Model):
-    id=models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    is_deleted = models.BooleanField(default=False)
-
-    class Meta:
-        abstract = True
-
 
 class Tag(models.Model):
     title = models.CharField(max_length=150)
@@ -48,7 +41,7 @@ class Post(BaseModel):
         ordering = ['-created_at']
 
     def get_absolute_url(self):
-        return reverse("post-details", args=[str(self.id)])
+        return reverse("post-detail", args=[str(self.id)])
     
     def __str__(self):
         return f"{self.user.username}'s Post on Date: {self.created_at.date()}"
@@ -95,5 +88,21 @@ class Stream(models.Model):
         ordering = ['-date']
 
 
+class Likes(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_likes')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='post_likes')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.post.id}"
+    
+from userAuth.models import Profile
+class SavedPost(models.Model):
+    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='profile_saved')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='post_saved')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.profile.user.username} - {self.post.id}"
+    
 post_save.connect(Stream.add_post, sender=Post)
 
