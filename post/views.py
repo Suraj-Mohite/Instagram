@@ -249,51 +249,6 @@ class SavePostAPIView(APIView):
             if user.is_authenticated:
                 post = self.get_object(id)
                 profile = Profile.objects.get(user=user)
-                if profile.favourite.filter(id=id).exists():
-                    profile.favourite.remove(post)
-                else:
-                    profile.favourite.add(post)
-
-                profile.save()
-                serializer = ProfileSerializer(profile)
-                response['status'] = 200
-                response['message'] = 'Success'
-                response['data'] = serializer.data
-                return Response(response, status=status.HTTP_200_OK)
-            return Response({'message': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
-        except Http404 as e: 
-            response['status'] = 404
-            response['message'] = 'Failed'
-            response['error'] = str(e)
-            return Response(response, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            logger.error("SavePostAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
-            return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-SavePostAPI = SavePostAPIView.as_view()
-
-
-class SavePostNewAPIView(APIView):
-
-    def get_object(self, id):
-            try:
-                return Post.objects.get(id=id)
-            except Post.DoesNotExist as e:
-                raise Http404(e)
-        
-    def post(self, request, id, format=None):
-        response = {}
-        response['status'] = 500
-        response['message'] = 'Internal server error'
-
-        try:
-            user = request.user
-            print(user)
-            if user.is_authenticated:
-                post = self.get_object(id)
-                profile = Profile.objects.get(user=user)
 
                 try:
                     saved_post_obj = SavedPost.objects.get(profile=profile, post=post)
@@ -327,4 +282,4 @@ class SavePostNewAPIView(APIView):
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-SavePostNewAPI = SavePostNewAPIView.as_view()
+SavePostAPI = SavePostAPIView.as_view()

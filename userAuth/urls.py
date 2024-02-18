@@ -11,6 +11,6 @@ urlpatterns = [
 
     #User Profile
 
-    path('<str:username>/posts/', UserProfile, name='user-posts'),
+    path('<str:username>/', UserProfile, name='user-posts'),
     path('<str:username>/saved/', UserProfile, name='user-saved'),
 ]

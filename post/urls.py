@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import IndexAPI, CreatePostAPI, PostDetailAPI, LikeAPI, SavePostAPI, SavePostNewAPI
+from .views import IndexAPI, CreatePostAPI, PostDetailAPI, LikeAPI, SavePostAPI
 
 urlpatterns = [
     path("", IndexAPI, name='index'),
@@ -7,5 +7,5 @@ urlpatterns = [
     path("post-detail/<uuid:id>", PostDetailAPI, name='post-detail'),
     path("<uuid:id>/like/", LikeAPI, name='post-like'),
     path("<uuid:id>/save-post/", SavePostAPI, name='post-save'),
-    path("<uuid:id>/save-post-new/", SavePostNewAPI, name='post-save-new'),
+    # path("<uuid:id>/save-post-new/", SavePostNewAPI, name='post-save-new'),
 ]

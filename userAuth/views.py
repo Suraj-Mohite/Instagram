@@ -4,6 +4,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.exceptions import NotFound
 
 from django.urls import resolve
 from django.http import Http404
@@ -35,6 +37,8 @@ class MyTokenObtainPairView(TokenObtainPairView):
 
 class UserProfileAPIView(APIView):
 
+    pagination_class = PageNumberPagination
+
     def get_object(self, username):
         try:
             return User.objects.get(username=username)
@@ -45,24 +49,37 @@ class UserProfileAPIView(APIView):
         response = {}
         response['status'] = 500
         response['message'] = 'Internal server error'
+        response['data'] = {}
 
         try:
             
             user = self.get_object(username)
+            profile_obj = Profile.objects.get(user=user)
             url_name = resolve(request.path).url_name
             if url_name == "user-posts":
                 posts = Post.objects.filter(user=user).order_by('-created_at')
             elif url_name == "user-saved":
-                profile_obj = Profile.objects.get(user=user)
                 posts = Post.objects.filter(post_saved__profile=profile_obj).order_by("-post_saved__created_at") # here post_saved is related name in SavedPost model connected post with it with foreignkey
 
-            serializer = PostSerializer(posts, many=True)
+            #Pagination
+            paginator = self.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(posts, request)
+            post_serializer = PostSerializer(paginated_queryset, many=True)
+            profile_serializer = ProfileSerializer(profile_obj)
+            # serializer = PostSerializer(posts, many=True)
 
             response['status'] = 200
             response['message'] = 'Success'
-            response['data'] = serializer.data
+            response['data']['profile'] = profile_serializer.data
+            response['data']['posts'] = post_serializer.data
 
             return Response(response, status=status.HTTP_200_OK)
+        
+        except NotFound as e:
+            response['status'] = 404
+            response['message'] = 'Page not found'
+            response['error'] = str(e)
+            return Response(response, status=status.HTTP_404_NOT_FOUND)
         
         except Http404 as e: 
             response['status'] = 404

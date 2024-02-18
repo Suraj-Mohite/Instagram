@@ -14,7 +14,6 @@ class Profile(BaseModel):
     bio = models.CharField(max_length=300, null=True, blank=True)
     url = models.URLField(max_length=200, null=True, blank=True)
     profile_picture = models.ImageField(upload_to=get_user_directory_path, default="default.jpg")
-    favourite = models.ManyToManyField(Post, related_name="favourite", blank=True)
 
     def __str__(self):
         return self.user.username
