@@ -68,7 +68,7 @@ class Follow(BaseModel):
 class Stream(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, related_name="stream_post")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="stream_user")
-    following = models.ForeignKey(User, on_delete=models.CASCADE, related_name="stream_following")
+    following = models.ForeignKey(User, on_delete=models.CASCADE, null= True, related_name="stream_following")
     date = models.DateTimeField()
 
     def add_post(sender, instance, *args, **kwargs):
@@ -80,6 +80,9 @@ class Stream(models.Model):
         for follower in followers:
             stream = Stream(post=post, user=follower.follower, date=post.created_at, following=user)
             stream.save()
+
+        stream = Stream(post=post, user=user, date=post.created_at)
+        stream.save()
 
     def __str__(self):
         return f"{self.post.user.username} - {self.user.username}"

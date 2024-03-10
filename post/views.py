@@ -278,7 +278,7 @@ class SavePostAPIView(APIView):
             return Response(response, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
-            logger.error("SavePostNewAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
+            logger.error("SavePostAPIView %s at %s", str(e), str(exc_tb.tb_lineno), extra={'AppName': 'post'})
             return Response(response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
